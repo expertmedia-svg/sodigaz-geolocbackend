@@ -35,9 +35,11 @@ def seed_database():
         else:
             print("[INFO] Admin user already exists.")
             
-        # 3. Seed Depot Locations from mobile_apps/sodigaz_locator/location.csv
+        # 3. Seed Depot Locations from local location.csv or mobile_apps sibling
         current_dir = Path(__file__).resolve().parent
-        csv_path = current_dir.parent / "mobile_apps" / "sodigaz_locator" / "location.csv"
+        csv_path = current_dir / "location.csv"
+        if not csv_path.exists():
+            csv_path = current_dir.parent / "mobile_apps" / "sodigaz_locator" / "location.csv"
         
         if csv_path.exists():
             print(f"[INFO] Found default locations file: {csv_path.name}")
