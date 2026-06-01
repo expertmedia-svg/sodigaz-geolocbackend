@@ -52,18 +52,24 @@ CITY_REFERENCES: dict[str, tuple[float, float]] = {
 }
 
 
-def _clean(value: str | None) -> str | None:
+def _clean(value: any) -> str | None:
     if value is None:
         return None
+    if isinstance(value, (int, float)):
+        value = str(value)
+    elif not isinstance(value, str):
+        value = str(value)
     cleaned = value.strip().strip('\ufeff')
     if not cleaned or cleaned in {'undefined', 'null', '#'}:
         return None
     return cleaned
 
 
-def _normalize_header(value: str | None) -> str:
+def _normalize_header(value: any) -> str:
     if value is None:
         return ''
+    if not isinstance(value, str):
+        value = str(value)
     return (
         value.strip()
         .strip('\ufeff')
@@ -81,7 +87,9 @@ def _normalize_header(value: str | None) -> str:
     )
 
 
-def _parse_float(value: str | None) -> float | None:
+def _parse_float(value: any) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
     cleaned = _clean(value)
     if cleaned is None:
         return None
@@ -91,7 +99,11 @@ def _parse_float(value: str | None) -> float | None:
         return None
 
 
-def _parse_int(value: str | None, default: int = 0) -> int:
+def _parse_int(value: any, default: int = 0) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
     cleaned = _clean(value)
     if cleaned is None:
         return default
@@ -101,7 +113,7 @@ def _parse_int(value: str | None, default: int = 0) -> int:
         return default
 
 
-def _pick_value(row: dict[str, str | None], field: str) -> str | None:
+def _pick_value(row: dict[str, any], field: str) -> str | None:
     aliases = CLASSIC_FIELD_ALIASES.get(field, (field,))
     for alias in aliases:
         value = row.get(alias)
@@ -111,8 +123,8 @@ def _pick_value(row: dict[str, str | None], field: str) -> str | None:
     return None
 
 
-def _normalize_row_keys(row: dict[str, str | None]) -> dict[str, str | None]:
-    normalized: dict[str, str | None] = {}
+def _normalize_row_keys(row: dict[str, any]) -> dict[str, any]:
+    normalized: dict[str, any] = {}
     for key, value in row.items():
         normalized[_normalize_header(key)] = value
     return normalized
