@@ -43,6 +43,8 @@ class DepotCreate(BaseModel):
     maps_url: Optional[str] = None
     itinerary_url: Optional[str] = None
     description: Optional[str] = None
+    status: Optional[str] = "Actif"
+    comments: Optional[str] = None
 
 class DepotUpdate(BaseModel):
     name: Optional[str] = None
@@ -60,6 +62,8 @@ class DepotUpdate(BaseModel):
     maps_url: Optional[str] = None
     itinerary_url: Optional[str] = None
     description: Optional[str] = None
+    status: Optional[str] = None
+    comments: Optional[str] = None
 
 class DepotResponse(BaseModel):
     id: int
@@ -79,6 +83,8 @@ class DepotResponse(BaseModel):
     itinerary_url: Optional[str]
     description: Optional[str]
     is_active: bool
+    status: str
+    comments: Optional[str]
     created_at: datetime
     updated_at: datetime
     

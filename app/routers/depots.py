@@ -91,6 +91,7 @@ def create_depot_admin(
         raise HTTPException(status_code=400, detail="Depot name already registered")
         
     depot = Depot(**data.dict())
+    depot.is_active = (depot.status == "Actif")
     db.add(depot)
     db.commit()
     db.refresh(depot)
@@ -111,6 +112,7 @@ def update_depot_admin(
     for key, value in data.dict(exclude_unset=True).items():
         setattr(depot, key, value)
         
+    depot.is_active = (depot.status == "Actif")
     db.commit()
     db.refresh(depot)
     return depot

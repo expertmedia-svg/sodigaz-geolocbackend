@@ -44,6 +44,8 @@ class Depot(Base):
     itinerary_url = Column(String(500), nullable=True)
     description = Column(String(1000), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    status = Column(String(50), default="Actif", nullable=False)
+    comments = Column(String(1000), nullable=True)
     
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)

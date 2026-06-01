@@ -293,6 +293,8 @@ def _upsert_depot_from_record(
             stock_6kg_plein=0,
             stock_12kg_plein=0,
             is_active=True,
+            status="Actif",
+            comments=None,
         )
         db.add(depot)
         return 'created'
@@ -311,6 +313,7 @@ def _upsert_depot_from_record(
     depot.capacity_6kg = capacity_6kg if capacity_6kg else depot.capacity_6kg
     depot.capacity_12kg = capacity_12kg if capacity_12kg else depot.capacity_12kg
     depot.is_active = True
+    depot.status = "Actif"
     return 'updated'
 
 
