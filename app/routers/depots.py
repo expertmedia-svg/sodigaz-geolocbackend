@@ -156,6 +156,59 @@ async def import_depots_csv(
     }
 
 
+@admin_router.post("/import-json")
+async def import_depots_json(
+    depots_list: List[dict],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Bulk import depots from JSON payload."""
+    from import_locator_csv import _upsert_depot_from_record, _parse_float, _parse_int, _clean
+    created = 0
+    updated = 0
+    skipped = 0
+    
+    existing_names = {depot.name.lower() for depot in db.query(Depot).all()}
+    
+    for record in depots_list:
+        name = _clean(record.get('name') or record.get('nom') or record.get('title'))
+        latitude = _parse_float(record.get('latitude') or record.get('lat'))
+        longitude = _parse_float(record.get('longitude') or record.get('lng'))
+        if not name or latitude is None or longitude is None:
+            skipped += 1
+            continue
+            
+        result = _upsert_depot_from_record(
+            db,
+            existing_names,
+            name=name,
+            latitude=latitude,
+            longitude=longitude,
+            address=_clean(record.get('address') or record.get('adresse')) or name,
+            city=_clean(record.get('city') or record.get('ville')) or 'Ouagadougou',
+            quartier=_clean(record.get('quartier')),
+            plv_code=_clean(record.get('plv_code') or record.get('code_plv')),
+            maps_url=_clean(record.get('maps_url') or record.get('google_maps')),
+            phone=_clean(record.get('phone') or record.get('telephone') or record.get('tel')) or '',
+            capacity_6kg=_parse_int(record.get('capacity_6kg')),
+            capacity_12kg=_parse_int(record.get('capacity_12kg')),
+            status=_clean(record.get('status') or record.get('statut')) or 'Actif',
+            comments=_clean(record.get('comments') or record.get('commentaires')),
+        )
+        if result == 'created':
+            created += 1
+        else:
+            updated += 1
+            
+    db.commit()
+    return {
+        "status": "success",
+        "created": created,
+        "updated": updated,
+        "skipped": skipped
+    }
+
+
 # --- LOCATOR TRACKING ROUTER (Used by Flutter App for GPS / Sessions) ---
 
 @locator_router.get("/stats", response_model=LocatorStatsResponse)

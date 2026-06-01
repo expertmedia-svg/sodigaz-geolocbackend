@@ -23,6 +23,23 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UserCreate(BaseModel):
+    email: str
+    username: str
+    password: str
+    full_name: Optional[str] = None
+    role: Optional[str] = "user"
+
+class UserUpdate(BaseModel):
+    email: Optional[str] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class UserAdminResetPassword(BaseModel):
+    new_password: str
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str

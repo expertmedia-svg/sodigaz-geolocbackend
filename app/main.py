@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
-from .routers import auth, depots
+from .routers import auth, depots, users
 
 # Initialize database schemas
 Base.metadata.create_all(bind=engine)
@@ -23,6 +23,7 @@ app.add_middleware(
 
 # Register routers under prefix '/api'
 app.include_router(auth.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
 app.include_router(depots.public_router, prefix="/api")
 app.include_router(depots.admin_router, prefix="/api")
 app.include_router(depots.locator_router, prefix="/api")

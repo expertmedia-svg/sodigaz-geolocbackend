@@ -40,6 +40,8 @@ CLASSIC_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     'maps_url': ('maps_url', 'google_maps', 'maps', 'url', 'link', 'lien'),
     'capacity_6kg': ('capacity_6kg', 'capacite_6kg', 'cap_6kg'),
     'capacity_12kg': ('capacity_12kg', 'capacite_12kg', 'cap_12kg'),
+    'status': ('status', 'statut', 'etat'),
+    'comments': ('comments', 'commentaires', 'notes', 'note', 'comment', 'commentaire'),
 }
 
 CITY_REFERENCES: dict[str, tuple[float, float]] = {
@@ -171,6 +173,8 @@ def _load_classic_records_from_text(text: str) -> list[dict[str, str | None]]:
             'maps_url': _pick_value(row, 'maps_url'),
             'capacity_6kg': str(_parse_int(_pick_value(row, 'capacity_6kg'))),
             'capacity_12kg': str(_parse_int(_pick_value(row, 'capacity_12kg'))),
+            'status': _pick_value(row, 'status') or 'Actif',
+            'comments': _pick_value(row, 'comments'),
         })
     return records
 
@@ -266,6 +270,8 @@ def _upsert_depot_from_record(
     row_id: str | None = None,
     capacity_6kg: int = 0,
     capacity_12kg: int = 0,
+    status: str = "Actif",
+    comments: str | None = None,
 ) -> str:
     depot = None
 
@@ -292,9 +298,9 @@ def _upsert_depot_from_record(
             capacity_12kg=capacity_12kg,
             stock_6kg_plein=0,
             stock_12kg_plein=0,
-            is_active=True,
-            status="Actif",
-            comments=None,
+            is_active=(status == "Actif"),
+            status=status or "Actif",
+            comments=comments,
         )
         db.add(depot)
         return 'created'
@@ -312,8 +318,11 @@ def _upsert_depot_from_record(
     depot.phone = phone or depot.phone or ''
     depot.capacity_6kg = capacity_6kg if capacity_6kg else depot.capacity_6kg
     depot.capacity_12kg = capacity_12kg if capacity_12kg else depot.capacity_12kg
-    depot.is_active = True
-    depot.status = "Actif"
+    if status:
+        depot.status = status
+        depot.is_active = (status == "Actif")
+    if comments is not None:
+        depot.comments = comments
     return 'updated'
 
 
@@ -346,6 +355,8 @@ def _import_classic_records(records: list[dict[str, str | None]], db: Session) -
             phone=_clean(record.get('phone')) or '',
             capacity_6kg=_parse_int(record.get('capacity_6kg')),
             capacity_12kg=_parse_int(record.get('capacity_12kg')),
+            status=_clean(record.get('status')) or 'Actif',
+            comments=_clean(record.get('comments')),
         )
         if result == 'created':
             created += 1
