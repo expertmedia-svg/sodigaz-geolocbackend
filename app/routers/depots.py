@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status,
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime, timedelta
-from ..database import get_db
-from ..models import Depot, LocatorSession, Location, User
-from ..schemas import DepotResponse, DepotCreate, DepotUpdate, DepotMapResponse, DepotMapFilters, LocatorStatsResponse, LocatorSessionResponse, LocationHistoryResponse
-from ..auth import require_admin, get_current_user
+from app.database import get_db
+from app.models import Depot, LocatorSession, Location, User
+from app.schemas import DepotResponse, DepotCreate, DepotUpdate, DepotMapResponse, DepotMapFilters, LocatorStatsResponse, LocatorSessionResponse, LocationHistoryResponse
+from app.auth import get_current_user
 import io
 import csv
 
@@ -67,7 +67,7 @@ def get_depot_public(depot_id: int, db: Session = Depends(get_db)):
 @admin_router.get("", response_model=List[DepotResponse])
 def get_all_depots_admin(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """List all depots including inactive ones (Admin only)."""
     return db.query(Depot).all()
@@ -76,7 +76,7 @@ def get_all_depots_admin(
 def create_depot_admin(
     data: DepotCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """Create a new depot (Admin only)."""
     # Check uniqueness of PLV Code if provided
@@ -102,7 +102,7 @@ def update_depot_admin(
     depot_id: int,
     data: DepotUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """Update a depot's info or inventory (Admin only)."""
     depot = db.query(Depot).filter(Depot.id == depot_id).first()
@@ -121,7 +121,7 @@ def update_depot_admin(
 def delete_depot_admin(
     depot_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """Delete a depot permanently (Admin only)."""
     depot = db.query(Depot).filter(Depot.id == depot_id).first()
@@ -137,7 +137,7 @@ def delete_depot_admin(
 async def import_depots_csv(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """Bulk import depots from uploaded CSV file."""
     contents = await file.read()
@@ -160,7 +160,7 @@ async def import_depots_csv(
 async def import_depots_json(
     depots_list: List[dict],
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """Bulk import depots from JSON payload."""
     from import_locator_csv import _upsert_depot_from_record, _parse_float, _parse_int, _clean
@@ -214,7 +214,7 @@ async def import_depots_json(
 @locator_router.get("/stats", response_model=LocatorStatsResponse)
 def get_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """Get overall tracking statistics for dashboard."""
     total_depots = db.query(Depot).filter(Depot.is_active == True).count()
@@ -317,7 +317,7 @@ def log_gps_location(
 @locator_router.get("/sessions", response_model=List[LocatorSessionResponse])
 def get_all_sessions(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """Retrieve all user sessions for tracking usage."""
     sessions = db.query(LocatorSession).order_by(LocatorSession.created_at.desc()).limit(100).all()
@@ -339,7 +339,7 @@ def get_location_history(
     depot_id: Optional[int] = None,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
     """Retrieve all location logging records (Admin only)."""
     q = db.query(Location)
