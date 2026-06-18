@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from app.database import get_db
 from app.models import Depot, LocatorSession, Location, User
 from app.schemas import DepotResponse, DepotCreate, DepotUpdate, DepotMapResponse, DepotMapFilters, LocatorStatsResponse, LocatorSessionResponse, LocationHistoryResponse
-from app.auth import get_current_user
+from app.auth import get_current_user, get_current_user_optional
 import io
 import csv
 
@@ -262,7 +262,7 @@ def get_stats(
 def start_session(
     depot_id: int,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Log the initiation of a tracking map viewing session (either anonymous or logged-in)."""
     depot = db.query(Depot).filter(Depot.id == depot_id).first()
