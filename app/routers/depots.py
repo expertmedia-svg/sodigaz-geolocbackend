@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from pydantic import BaseModel
 from datetime import datetime, timedelta
 from app.database import get_db
 from app.models import Depot, LocatorSession, Location, User
@@ -131,6 +132,24 @@ def delete_depot_admin(
     db.delete(depot)
     db.commit()
     return {"message": f"Depot '{depot.name}' deleted successfully"}
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: List[int]
+
+@admin_router.post("/bulk-delete")
+def bulk_delete_depots(
+    data: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Bulk delete depots (Admin / Network Team)."""
+    if not data.ids:
+        raise HTTPException(status_code=400, detail="No IDs provided for deletion")
+    
+    deleted_count = db.query(Depot).filter(Depot.id.in_(data.ids)).delete(synchronize_session=False)
+    db.commit()
+    return {"message": f"Successfully deleted {deleted_count} depots"}
 
 
 @admin_router.post("/import-csv")
