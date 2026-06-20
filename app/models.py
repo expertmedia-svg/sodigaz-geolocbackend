@@ -40,6 +40,7 @@ class Depot(Base):
     capacity_12kg = Column(Integer, default=0, nullable=False)
     
     plv_code = Column(String(50), unique=True, index=True, nullable=True)
+    client_name = Column(String(255), nullable=True)
     maps_url = Column(String(500), nullable=True)
     itinerary_url = Column(String(500), nullable=True)
     description = Column(String(1000), nullable=True)

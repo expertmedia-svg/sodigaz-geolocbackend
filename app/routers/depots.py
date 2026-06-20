@@ -16,6 +16,43 @@ locator_router = APIRouter(prefix="/locator", tags=["locator-tracking"])
 
 # --- PUBLIC ROUTER (Used by Flutter App & Public Map) ---
 
+def clean_depot_for_public(depot: Depot) -> dict:
+    public_name = depot.name
+    if depot.plv_code:
+        name_lower = depot.name.lower()
+        if depot.client_name or "chez" in name_lower or len(depot.name.split()) >= 3:
+            public_name = f"PLV {depot.plv_code}"
+            
+    address_val = depot.address or ""
+    if not address_val or address_val == depot.name or "chez" in address_val.lower():
+        parts = [part for part in [depot.quartier, depot.city, "Burkina Faso"] if part]
+        address_val = ", ".join(parts)
+        
+    return {
+        "id": depot.id,
+        "name": public_name,
+        "latitude": depot.latitude,
+        "longitude": depot.longitude,
+        "address": address_val,
+        "phone": "",  # Mask/hide phone contact info
+        "city": depot.city,
+        "quartier": depot.quartier or "",
+        "stock_6kg_plein": depot.stock_6kg_plein,
+        "stock_12kg_plein": depot.stock_12kg_plein,
+        "capacity_6kg": depot.capacity_6kg,
+        "capacity_12kg": depot.capacity_12kg,
+        "plv_code": depot.plv_code,
+        "client_name": None,  # Mask/hide client name
+        "maps_url": depot.maps_url,
+        "itinerary_url": depot.itinerary_url,
+        "description": "",  # Mask/hide description
+        "is_active": depot.is_active,
+        "status": depot.status,
+        "comments": "",  # Mask/hide comments
+        "created_at": depot.created_at,
+        "updated_at": depot.updated_at
+    }
+
 @public_router.get("/map", response_model=DepotMapResponse)
 def get_depots_map(
     city: Optional[str] = Query(default=None),
@@ -47,7 +84,7 @@ def get_depots_map(
     quartiers = sorted(list(set(d.quartier for d in all_depots if d.quartier)))
     
     return {
-        "items": items,
+        "items": [clean_depot_for_public(d) for d in items],
         "filters": {
             "cities": cities,
             "quartiers": quartiers
@@ -60,7 +97,7 @@ def get_depot_public(depot_id: int, db: Session = Depends(get_db)):
     depot = db.query(Depot).filter(Depot.id == depot_id, Depot.is_active == True).first()
     if not depot:
         raise HTTPException(status_code=404, detail="Depot not found")
-    return depot
+    return clean_depot_for_public(depot)
 
 
 # --- ADMIN ROUTER (Used by Locator Admin Dashboard for CRUD) ---
@@ -80,18 +117,28 @@ def create_depot_admin(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new depot (Admin only)."""
+    # Validation: name or plv_code must be provided
+    if not data.name and not data.plv_code:
+        raise HTTPException(status_code=400, detail="Le nom de PLV ou le Code PLV est obligatoire")
+        
     # Check uniqueness of PLV Code if provided
     if data.plv_code:
         exists = db.query(Depot).filter(Depot.plv_code == data.plv_code).first()
         if exists:
-            raise HTTPException(status_code=400, detail="PLV Code already registered")
+            raise HTTPException(status_code=400, detail="Ce Code PLV est déjà enregistré")
             
+    # Determine public display name
+    name_val = data.name or f"PLV {data.plv_code}"
+    
     # Check uniqueness of Name
-    exists = db.query(Depot).filter(Depot.name.ilike(data.name)).first()
+    exists = db.query(Depot).filter(Depot.name.ilike(name_val)).first()
     if exists:
-        raise HTTPException(status_code=400, detail="Depot name already registered")
+        raise HTTPException(status_code=400, detail="Ce Nom de PLV (ou Code PLV) est déjà enregistré")
         
-    depot = Depot(**data.dict())
+    depot_data = data.dict()
+    depot_data["name"] = name_val
+    
+    depot = Depot(**depot_data)
     depot.is_active = (depot.status == "Actif")
     db.add(depot)
     db.commit()
@@ -110,7 +157,19 @@ def update_depot_admin(
     if not depot:
         raise HTTPException(status_code=404, detail="Depot not found")
         
-    for key, value in data.dict(exclude_unset=True).items():
+    updated_data = data.dict(exclude_unset=True)
+    
+    if "plv_code" in updated_data and updated_data["plv_code"]:
+        exists = db.query(Depot).filter(Depot.plv_code == updated_data["plv_code"], Depot.id != depot_id).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="Ce Code PLV est déjà enregistré")
+            
+    if "name" in updated_data and updated_data["name"]:
+        exists = db.query(Depot).filter(Depot.name.ilike(updated_data["name"]), Depot.id != depot_id).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="Ce Nom de PLV est déjà enregistré")
+            
+    for key, value in updated_data.items():
         setattr(depot, key, value)
         
     depot.is_active = (depot.status == "Actif")
@@ -216,6 +275,7 @@ async def import_depots_json(
                 city=_clean(record.get('city') or record.get('ville')) or 'Ouagadougou',
                 quartier=_clean(record.get('quartier')),
                 plv_code=_clean(record.get('plv_code') or record.get('code_plv')),
+                client_name=_clean(record.get('client_name') or record.get('nom_client')),
                 maps_url=_clean(record.get('maps_url') or record.get('google_maps')),
                 phone=_clean(record.get('phone') or record.get('telephone') or record.get('tel')) or '',
                 capacity_6kg=_parse_int(record.get('capacity_6kg')),

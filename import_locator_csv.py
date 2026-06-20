@@ -37,6 +37,7 @@ CLASSIC_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     'longitude': ('longitude', 'lng', 'lon', 'x', 'gps_lng', 'gps_longitude'),
     'phone': ('phone', 'telephone', 'téléphone', 'tel', 'mobile'),
     'plv_code': ('plv_code', 'plv', 'code_plv', 'code'),
+    'client_name': ('client_name', 'nom_client', 'client', 'contact_name'),
     'maps_url': ('maps_url', 'google_maps', 'maps', 'url', 'link', 'lien'),
     'capacity_6kg': ('capacity_6kg', 'capacite_6kg', 'cap_6kg'),
     'capacity_12kg': ('capacity_12kg', 'capacite_12kg', 'cap_12kg'),
@@ -201,6 +202,7 @@ def _load_classic_records_from_text(text: str) -> list[dict[str, str | None]]:
             'longitude': str(longitude),
             'phone': _pick_value(row, 'phone') or '',
             'plv_code': _pick_value(row, 'plv_code'),
+            'client_name': _pick_value(row, 'client_name'),
             'maps_url': _pick_value(row, 'maps_url'),
             'capacity_6kg': str(_parse_int(_pick_value(row, 'capacity_6kg'))),
             'capacity_12kg': str(_parse_int(_pick_value(row, 'capacity_12kg'))),
@@ -303,6 +305,7 @@ def _upsert_depot_from_record(
     capacity_12kg: int = 0,
     status: str = "Actif",
     comments: str | None = None,
+    client_name: str | None = None,
 ) -> str:
     depot = None
 
@@ -323,6 +326,7 @@ def _upsert_depot_from_record(
             city=city or 'Ouagadougou',
             quartier=quartier,
             plv_code=plv_code,
+            client_name=client_name,
             maps_url=maps_url,
             phone=phone,
             capacity_6kg=capacity_6kg,
@@ -345,6 +349,7 @@ def _upsert_depot_from_record(
     depot.city = city or depot.city
     depot.quartier = quartier or depot.quartier
     depot.plv_code = plv_code or depot.plv_code
+    depot.client_name = client_name or depot.client_name
     depot.maps_url = maps_url or depot.maps_url
     depot.phone = phone or depot.phone or ''
     depot.capacity_6kg = capacity_6kg if capacity_6kg else depot.capacity_6kg
@@ -382,6 +387,7 @@ def _import_classic_records(records: list[dict[str, str | None]], db: Session) -
             city=_clean(record.get('city')) or 'Ouagadougou',
             quartier=_clean(record.get('quartier')),
             plv_code=_clean(record.get('plv_code')),
+            client_name=_clean(record.get('client_name')),
             maps_url=_clean(record.get('maps_url')),
             phone=_clean(record.get('phone')) or '',
             capacity_6kg=_parse_int(record.get('capacity_6kg')),

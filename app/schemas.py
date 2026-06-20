@@ -47,7 +47,7 @@ class TokenResponse(BaseModel):
 
 # Depot Schemas
 class DepotCreate(BaseModel):
-    name: str
+    name: Optional[str] = None
     latitude: float
     longitude: float
     address: Optional[str] = None
@@ -57,6 +57,7 @@ class DepotCreate(BaseModel):
     capacity_6kg: Optional[int] = 0
     capacity_12kg: Optional[int] = 0
     plv_code: Optional[str] = None
+    client_name: Optional[str] = None
     maps_url: Optional[str] = None
     itinerary_url: Optional[str] = None
     description: Optional[str] = None
@@ -76,6 +77,7 @@ class DepotUpdate(BaseModel):
     capacity_6kg: Optional[int] = None
     capacity_12kg: Optional[int] = None
     plv_code: Optional[str] = None
+    client_name: Optional[str] = None
     maps_url: Optional[str] = None
     itinerary_url: Optional[str] = None
     description: Optional[str] = None
@@ -96,6 +98,7 @@ class DepotResponse(BaseModel):
     capacity_6kg: int
     capacity_12kg: int
     plv_code: Optional[str]
+    client_name: Optional[str] = None
     maps_url: Optional[str]
     itinerary_url: Optional[str]
     description: Optional[str]
