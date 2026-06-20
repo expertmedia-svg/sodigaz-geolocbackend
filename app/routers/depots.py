@@ -159,20 +159,28 @@ async def import_depots_csv(
     current_user: User = Depends(get_current_user)
 ):
     """Bulk import depots from uploaded CSV file."""
-    contents = await file.read()
-    text = contents.decode("utf-8", errors="replace")
-    
-    # Import logic using our imported utility
-    from import_locator_csv import import_depots_csv_text
-    created, updated, skipped, detected_format = import_depots_csv_text(text, db)
-    
-    return {
-        "status": "success",
-        "created": created,
-        "updated": updated,
-        "skipped": skipped,
-        "format": detected_format
-    }
+    try:
+        contents = await file.read()
+        text = contents.decode("utf-8", errors="replace")
+        
+        # Import logic using our imported utility
+        from import_locator_csv import import_depots_csv_text
+        created, updated, skipped, detected_format = import_depots_csv_text(text, db)
+        
+        return {
+            "status": "success",
+            "created": created,
+            "updated": updated,
+            "skipped": skipped,
+            "format": detected_format
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erreur lors de l'importation du fichier CSV : {str(e)}"
+        )
 
 
 @admin_router.post("/import-json")
@@ -182,50 +190,58 @@ async def import_depots_json(
     current_user: User = Depends(get_current_user)
 ):
     """Bulk import depots from JSON payload."""
-    from import_locator_csv import _upsert_depot_from_record, _parse_float, _parse_int, _clean
-    created = 0
-    updated = 0
-    skipped = 0
-    
-    existing_names = {depot.name.lower() for depot in db.query(Depot).all()}
-    
-    for record in depots_list:
-        name = _clean(record.get('name') or record.get('nom') or record.get('title'))
-        latitude = _parse_float(record.get('latitude') or record.get('lat'))
-        longitude = _parse_float(record.get('longitude') or record.get('lng'))
-        if not name or latitude is None or longitude is None:
-            skipped += 1
-            continue
-            
-        result = _upsert_depot_from_record(
-            db,
-            existing_names,
-            name=name,
-            latitude=latitude,
-            longitude=longitude,
-            address=_clean(record.get('address') or record.get('adresse')) or name,
-            city=_clean(record.get('city') or record.get('ville')) or 'Ouagadougou',
-            quartier=_clean(record.get('quartier')),
-            plv_code=_clean(record.get('plv_code') or record.get('code_plv')),
-            maps_url=_clean(record.get('maps_url') or record.get('google_maps')),
-            phone=_clean(record.get('phone') or record.get('telephone') or record.get('tel')) or '',
-            capacity_6kg=_parse_int(record.get('capacity_6kg')),
-            capacity_12kg=_parse_int(record.get('capacity_12kg')),
-            status=_clean(record.get('status') or record.get('statut')) or 'Actif',
-            comments=_clean(record.get('comments') or record.get('commentaires')),
+    try:
+        from import_locator_csv import _upsert_depot_from_record, _parse_float, _parse_int, _clean
+        created = 0
+        updated = 0
+        skipped = 0
+        
+        existing_names = {depot.name.lower() for depot in db.query(Depot).all()}
+        
+        for record in depots_list:
+            name = _clean(record.get('name') or record.get('nom') or record.get('title'))
+            latitude = _parse_float(record.get('latitude') or record.get('lat'))
+            longitude = _parse_float(record.get('longitude') or record.get('lng'))
+            if not name or latitude is None or longitude is None:
+                skipped += 1
+                continue
+                
+            result = _upsert_depot_from_record(
+                db,
+                existing_names,
+                name=name,
+                latitude=latitude,
+                longitude=longitude,
+                address=_clean(record.get('address') or record.get('adresse')) or name,
+                city=_clean(record.get('city') or record.get('ville')) or 'Ouagadougou',
+                quartier=_clean(record.get('quartier')),
+                plv_code=_clean(record.get('plv_code') or record.get('code_plv')),
+                maps_url=_clean(record.get('maps_url') or record.get('google_maps')),
+                phone=_clean(record.get('phone') or record.get('telephone') or record.get('tel')) or '',
+                capacity_6kg=_parse_int(record.get('capacity_6kg')),
+                capacity_12kg=_parse_int(record.get('capacity_12kg')),
+                status=_clean(record.get('status') or record.get('statut')) or 'Actif',
+                comments=_clean(record.get('comments') or record.get('commentaires')),
+            )
+            if result == 'created':
+                created += 1
+            else:
+                updated += 1
+                
+        db.commit()
+        return {
+            "status": "success",
+            "created": created,
+            "updated": updated,
+            "skipped": skipped
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erreur lors de l'importation du JSON : {str(e)}"
         )
-        if result == 'created':
-            created += 1
-        else:
-            updated += 1
-            
-    db.commit()
-    return {
-        "status": "success",
-        "created": created,
-        "updated": updated,
-        "skipped": skipped
-    }
 
 
 # --- LOCATOR TRACKING ROUTER (Used by Flutter App for GPS / Sessions) ---

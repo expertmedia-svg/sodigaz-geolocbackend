@@ -73,6 +73,8 @@ def _normalize_header(value: any) -> str:
     return (
         value.strip()
         .strip('\ufeff')
+        .strip('"')
+        .strip("'")
         .lower()
         .replace('é', 'e')
         .replace('è', 'e')
@@ -85,6 +87,21 @@ def _normalize_header(value: any) -> str:
         .replace('-', '_')
         .replace(' ', '_')
     )
+
+
+def _detect_delimiter(text: str) -> str:
+    first_line = next((line for line in text.splitlines() if line.strip()), '')
+    if not first_line:
+        return ','
+    semicolon_count = first_line.count(';')
+    comma_count = first_line.count(',')
+    tab_count = first_line.count('\t')
+    
+    if semicolon_count > comma_count and semicolon_count > tab_count:
+        return ';'
+    if tab_count > comma_count and tab_count > semicolon_count:
+        return '\t'
+    return ','
 
 
 def _parse_float(value: any) -> float | None:
@@ -134,7 +151,8 @@ def _looks_like_classic_csv(text: str) -> bool:
     first_line = next((line for line in text.splitlines() if line.strip()), '')
     if not first_line:
         return False
-    normalized_headers = {_normalize_header(part) for part in first_line.split(',')}
+    delimiter = _detect_delimiter(text)
+    normalized_headers = {_normalize_header(part) for part in first_line.split(delimiter)}
     has_name = bool(normalized_headers.intersection(CLASSIC_FIELD_ALIASES['name']))
     has_lat = bool(normalized_headers.intersection(CLASSIC_FIELD_ALIASES['latitude']))
     has_lng = bool(normalized_headers.intersection(CLASSIC_FIELD_ALIASES['longitude']))
@@ -164,7 +182,8 @@ def _load_locator_records_from_lines(raw_lines: list[str]) -> list[dict[str, str
 
 def _load_classic_records_from_text(text: str) -> list[dict[str, str | None]]:
     stream = io.StringIO(text)
-    reader = csv.DictReader(stream)
+    delimiter = _detect_delimiter(text)
+    reader = csv.DictReader(stream, delimiter=delimiter)
     records: list[dict[str, str | None]] = []
     for raw_row in reader:
         row = _normalize_row_keys(raw_row)
