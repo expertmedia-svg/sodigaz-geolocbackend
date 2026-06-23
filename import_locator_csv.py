@@ -61,7 +61,7 @@ def _clean(value: any) -> str | None:
     elif not isinstance(value, str):
         value = str(value)
     cleaned = value.strip().strip('\ufeff')
-    if not cleaned or cleaned in {'undefined', 'null', '#'}:
+    if not cleaned or cleaned in {'undefined', 'null', '#', '""', "''"}:
         return None
     return cleaned
 

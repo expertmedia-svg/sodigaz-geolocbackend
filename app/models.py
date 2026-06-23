@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, event
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -80,3 +80,33 @@ class Location(Base):
     timestamp = Column(DateTime, default=utc_now, nullable=False)
 
     depot = relationship("Depot", back_populates="locations")
+
+
+@event.listens_for(Depot, 'before_insert')
+def auto_generate_urls_insert(mapper, connection, target):
+    if target.maps_url in {'""', "''"}:
+        target.maps_url = None
+    if target.itinerary_url in {'""', "''"}:
+        target.itinerary_url = None
+
+    if target.latitude is not None and target.longitude is not None:
+        if not target.maps_url:
+            target.maps_url = f"https://www.google.com/maps?q={target.latitude},{target.longitude}"
+        if not target.itinerary_url:
+            target.itinerary_url = f"https://www.google.com/maps/dir/?api=1&destination={target.latitude},{target.longitude}"
+
+
+@event.listens_for(Depot, 'before_update')
+def auto_generate_urls_update(mapper, connection, target):
+    if target.maps_url in {'""', "''"}:
+        target.maps_url = None
+    if target.itinerary_url in {'""', "''"}:
+        target.itinerary_url = None
+
+    if target.latitude is not None and target.longitude is not None:
+        # If maps_url is empty, or is a standard google maps query url (which we should keep updated with coordinates)
+        if not target.maps_url or "google.com/maps?q=" in target.maps_url or "maps.google.com/?q=" in target.maps_url:
+            target.maps_url = f"https://www.google.com/maps?q={target.latitude},{target.longitude}"
+        if not target.itinerary_url or "google.com/maps/dir/" in target.itinerary_url:
+            target.itinerary_url = f"https://www.google.com/maps/dir/?api=1&destination={target.latitude},{target.longitude}"
+
