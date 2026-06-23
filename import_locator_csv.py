@@ -471,3 +471,79 @@ def import_depots_csv_text(text: str, db: Session = None) -> tuple[int, int, int
     finally:
         if not is_external_db:
             db.close()
+
+
+def import_depots_excel_bytes(content_bytes: bytes, db: Session = None) -> tuple[int, int, int, str]:
+    is_external_db = (db is not None)
+    if not is_external_db:
+        db = SessionLocal()
+        
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(content_bytes), data_only=True)
+        sheet = wb.active
+        
+        rows = list(sheet.iter_rows(values_only=True))
+        if not rows:
+            return 0, 0, 0, 'excel'
+            
+        # Find the header row
+        header_row_idx = None
+        headers = []
+        for idx, row in enumerate(rows):
+            row_headers = [_normalize_header(str(cell)) for cell in row if cell is not None]
+            has_name = any(h in CLASSIC_FIELD_ALIASES['name'] for h in row_headers)
+            has_lat = any(h in CLASSIC_FIELD_ALIASES['latitude'] for h in row_headers)
+            has_lng = any(h in CLASSIC_FIELD_ALIASES['longitude'] for h in row_headers)
+            if has_name and has_lat and has_lng:
+                headers = [str(cell).strip() if cell is not None else "" for cell in row]
+                header_row_idx = idx
+                break
+                
+        if header_row_idx is None:
+            # Fallback: check if the first row could be headers
+            headers = [str(cell).strip() if cell is not None else "" for cell in rows[0]]
+            header_row_idx = 0
+            
+        records = []
+        for row in rows[header_row_idx + 1:]:
+            if not any(cell is not None for cell in row):
+                continue
+                
+            raw_row = {}
+            for col_idx, cell in enumerate(row):
+                if col_idx < len(headers):
+                    header = headers[col_idx]
+                    if header:
+                        raw_row[header] = cell
+                        
+            row_norm = _normalize_row_keys(raw_row)
+            name = _pick_value(row_norm, 'name')
+            latitude = _parse_float(_pick_value(row_norm, 'latitude'))
+            longitude = _parse_float(_pick_value(row_norm, 'longitude'))
+            
+            if not name or latitude is None or longitude is None:
+                continue
+                
+            records.append({
+                'name': name,
+                'address': _pick_value(row_norm, 'address') or name,
+                'city': _pick_value(row_norm, 'city') or 'Ouagadougou',
+                'quartier': _pick_value(row_norm, 'quartier'),
+                'latitude': str(latitude),
+                'longitude': str(longitude),
+                'phone': _pick_value(row_norm, 'phone') or '',
+                'plv_code': _pick_value(row_norm, 'plv_code'),
+                'client_name': _pick_value(row_norm, 'client_name'),
+                'maps_url': _pick_value(row_norm, 'maps_url'),
+                'capacity_6kg': str(_parse_int(_pick_value(row_norm, 'capacity_6kg'))),
+                'capacity_12kg': str(_parse_int(_pick_value(row_norm, 'capacity_12kg'))),
+                'status': _pick_value(row_norm, 'status') or 'Actif',
+                'comments': _pick_value(row_norm, 'comments'),
+            })
+            
+        created, updated, skipped = _import_classic_records(records, db)
+        return created, updated, skipped, 'excel'
+    finally:
+        if not is_external_db:
+            db.close()

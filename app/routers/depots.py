@@ -242,6 +242,41 @@ async def import_depots_csv(
         )
 
 
+@admin_router.post("/import-excel")
+async def import_depots_excel(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Bulk import depots from uploaded Excel file (.xlsx, .xls)."""
+    try:
+        if not (file.filename.endswith('.xlsx') or file.filename.endswith('.xls')):
+            raise HTTPException(
+                status_code=400,
+                detail="Seuls les fichiers Excel (.xlsx, .xls) sont acceptés."
+            )
+            
+        contents = await file.read()
+        
+        from import_locator_csv import import_depots_excel_bytes
+        created, updated, skipped, detected_format = import_depots_excel_bytes(contents, db)
+        
+        return {
+            "status": "success",
+            "created": created,
+            "updated": updated,
+            "skipped": skipped,
+            "format": detected_format
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erreur lors de l'importation du fichier Excel : {str(e)}"
+        )
+
+
 @admin_router.post("/import-json")
 async def import_depots_json(
     depots_list: List[dict],
