@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
-from .routers import auth, depots, users
+from .routers import auth, depots, users, plv_prices
 
 # Initialize database schemas
 Base.metadata.create_all(bind=engine)
@@ -27,6 +27,8 @@ app.include_router(users.router, prefix="/api")
 app.include_router(depots.public_router, prefix="/api")
 app.include_router(depots.admin_router, prefix="/api")
 app.include_router(depots.locator_router, prefix="/api")
+app.include_router(plv_prices.public_router, prefix="/api")
+app.include_router(plv_prices.admin_router, prefix="/api")
 
 @app.get("/")
 def read_root():

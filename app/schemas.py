@@ -152,3 +152,30 @@ class LocationHistoryResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# PLV Prices Schemas
+class PlvPriceBase(BaseModel):
+    bottle_label: str
+    bottle_size_kg: float
+    price_fcfa: int
+    city: Optional[str] = "ALL"
+    is_active: Optional[bool] = True
+
+class PlvPriceCreate(PlvPriceBase):
+    pass
+
+class PlvPriceUpdate(BaseModel):
+    bottle_label: Optional[str] = None
+    bottle_size_kg: Optional[float] = None
+    price_fcfa: Optional[int] = None
+    city: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class PlvPriceResponse(PlvPriceBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

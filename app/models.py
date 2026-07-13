@@ -110,3 +110,17 @@ def auto_generate_urls_update(mapper, connection, target):
         if not target.itinerary_url or "google.com/maps/dir/" in target.itinerary_url:
             target.itinerary_url = f"https://www.google.com/maps/dir/?api=1&destination={target.latitude},{target.longitude}"
 
+
+
+class PlvPrice(Base):
+    """Tarifs de recharge par format de bouteille et ville, configurables depuis l'admin."""
+    __tablename__ = "plv_prices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bottle_label = Column(String(50), nullable=False)   # ex: "6 KG", "12.5 KG", "2.75 KG"
+    bottle_size_kg = Column(Float, nullable=False)       # ex: 6.0, 12.5, 2.75
+    price_fcfa = Column(Integer, nullable=False)         # prix recharge/bouteille en FCFA
+    city = Column(String(100), default="ALL", nullable=False)  # "Ouagadougou", "Bobo-Dioulasso", "ALL"
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
